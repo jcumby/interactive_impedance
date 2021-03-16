@@ -76,13 +76,13 @@
 	<canvas id="freqCanvas" width="250" height="300" style="margin-left:6px; border:1px solid black;"></canvas>
 	<canvas id="nyquistCanvas" width="250" height="300" style="margin-left:6px; border:1px solid black;"></canvas>
 	<div style="width:250px; margin-left: 7px; float:left; text-align:center;">
-			<input type="button" value="Clear Bode" onclick="initPlot()" style="width:200px; font-size:16px;">
+			<input type="button" value="Clear Bode" onclick="drawBodePlot()" style="width:200px; font-size:16px;">
 	</div>
 	<div style="width:250px; margin-left: 7px; float:left; text-align:center;">
-			<input type="button" value="Clear Frequency" onclick="drawFreqPlot()" style="width:200px; font-size:16px;">
+			<input type="button" value="Clear Frequency" onclick="clearFreqPlot()" style="width:200px; font-size:16px;">
 	</div>
 	<div style="width:250px; margin-left: 7px; float:left; text-align:center;">
-			<input type="button" value="Clear Nyquist" onclick="initPlot()" style="width:200px; font-size:16px;">
+			<input type="button" value="Clear Nyquist" onclick="drawNyquistPlot()" style="width:200px; font-size:16px;">
 	</div>
 
     <p>
@@ -90,7 +90,7 @@
 	</p>
 </div>
 
-<script type="text/javascript" src="https://cdnjs.com/libraries/mathjs"></script>
+<script type="text/javascript" src="./math.js"></script>
 
 <script>
 
@@ -113,7 +113,10 @@
 	var inputList = new Array(freqCanvas.height + 10 );
 	var outputList = new Array(freqCanvas.height + 10 );
 	var phase;
-	var impedance = Math.complex(0,0)
+	var impedance = math.complex(0,0)
+	
+	var pistonIn = 0
+	var pistonOut = 0
 	
 	var starttime;
 	var runtime = 0;
@@ -130,14 +133,17 @@
 
     // Initialize the graphics:
     function init() {
-        freqXscale = freqCanvas.width/2;    // pixels per unit
-        freqYscale = freqCanvas.height / 7; // pixels per unit
-		bodeXscale = bodeCanvas.width/5;    // pixels per unit
-        bodeYscale = bodeCanvas.height / 7; // pixels per unit
+        freqXScale = freqCanvas.width/2;    // pixels per unit
+        freqYScale = freqCanvas.height / 7; // pixels per unit
+		bodeXScale = bodeCanvas.width / 5;    // pixels per unit
+        bodeYScale = bodeCanvas.height / 7; // pixels per unit
+		nyquistXScale = nyquistCanvas.width / 5;    // pixels per unit
+        nyquistYScale = nyquistCanvas.height / 7; // pixels per unit		
 		drawPipes();
         //drawPendulum();
         drawFreqPlot();
 		drawBodePlot();
+		drawNyquistPlot();
         //driveAmpChange();       // needed for Firefox, which remembers old setting upon reload
     }
 
@@ -152,14 +158,11 @@
 		var omega = 2*Math.PI*freqSlider.value
 		var forceIn = input * Math.cos( runtime/1000 * omega );
 
-		impedance.re = (1+resistanceSlider.value/100)
+		impedance.re = (1+resistanceSlider.value/100);
+		impedance.im = 0;
 
 		// Calculate output current for 'resistor' (very approximately)
 		var forceOut = forceIn / impedance;
-
-		// Manually set phase=0 for an ideal resistor
-		phase = 0;
-		
 		
 		inputList.unshift(forceIn);
 		if (inputList.length > (freqCanvas.height + 10) ) {
@@ -170,9 +173,16 @@
 		if (outputList.length > (freqCanvas.height + 10) ) {
 			outputList.pop()
 			}
+			
+		// Update piston positions
+		pistonIn += inputList[0]
+		pistonOut += outputList[0]
+		
+		drawPipes();
 		
 		freqPoints();
 		bodePoints();
+		nyquistPoints();
 		
 		animReference = requestAnimationFrame(function(timestamp){
 			run(timestamp)
@@ -208,6 +218,43 @@
 	function drawPipes() {
 		imageContext.fillStyle="white";
 		imageContext.fillRect(0, 0, imageCanvas.width, imageCanvas.height);
+		
+		
+		imageContext.fillStyle="lightblue";
+		
+		var shiftScale = 3;
+		
+		// Draw fluid
+		imageContext.beginPath();
+		imageContext.moveTo(shiftScale*pistonIn+0.2*imageCanvas.width, imageCanvas.height*0.1);
+		imageContext.lineTo(imageCanvas.width*0.4,imageCanvas.height*0.1);
+		imageContext.lineTo(imageCanvas.width*0.4, imageCanvas.height*0.1+0.1*resistanceSlider.value);
+		imageContext.lineTo(imageCanvas.width*0.6, imageCanvas.height*0.1+0.1*resistanceSlider.value);
+		imageContext.lineTo(imageCanvas.width*0.6,imageCanvas.height*0.1);
+		imageContext.lineTo(shiftScale*pistonOut + 0.8*imageCanvas.width, imageCanvas.height*0.1);
+
+		imageContext.lineTo(shiftScale*pistonOut + 0.8*imageCanvas.width,imageCanvas.height*0.9);
+		imageContext.lineTo(imageCanvas.width*0.6,imageCanvas.height*0.9);
+		imageContext.lineTo(imageCanvas.width*0.6, imageCanvas.height*0.9-0.1*resistanceSlider.value);
+		imageContext.lineTo(imageCanvas.width*0.4, imageCanvas.height*0.9-0.1*resistanceSlider.value);
+		imageContext.lineTo(imageCanvas.width*0.4,imageCanvas.height*0.9);
+		imageContext.lineTo(shiftScale*pistonIn+0.2*imageCanvas.width, imageCanvas.height*0.9);
+		imageContext.closePath();
+        imageContext.fill();
+		
+		// Draw pistons and forces
+		imageContext.beginPath();
+		imageContext.moveTo(shiftScale*pistonIn+0.2*imageCanvas.width, imageCanvas.height*0.1);
+		imageContext.lineTo(shiftScale*pistonIn+0.2*imageCanvas.width, imageCanvas.height*0.9);
+		imageContext.moveTo(shiftScale*pistonOut + 0.8*imageCanvas.width, imageCanvas.height*0.1);
+		imageContext.lineTo(shiftScale*pistonOut + 0.8*imageCanvas.width,imageCanvas.height*0.9);
+		imageContext.strokeStyle = "black";
+		imageContext.lineWidth = 5;
+		imageContext.stroke();
+		
+
+		
+		
         imageContext.strokeStyle = "black";
         imageContext.lineWidth = 5;
 		imageContext.beginPath();
@@ -226,8 +273,14 @@
 		imageContext.lineTo(imageCanvas.width*0.6,imageCanvas.height*0.9);
 		imageContext.lineTo(imageCanvas.width*0.95, imageCanvas.height*0.9);
         imageContext.stroke();
+		
+		
+
 	}
 
+	function animatePistons() {
+
+	}
 
 
     // Initialize the plot canvas:
@@ -238,13 +291,13 @@
         // Next draw gridlines:
         freqContext.strokeStyle = "lightgray";
         freqContext.lineWidth = 1;
-        for (var x=0; x<=freqCanvas.width; x+=freqXscale/2) {
+        for (var x=0; x<=freqCanvas.width; x+=freqXScale/2) {
             freqContext.beginPath();
             freqContext.moveTo(x, 0);
             freqContext.lineTo(x, freqCanvas.height);
             freqContext.stroke();
         }
-        //for (var y=(freqCanvas.height/2 - freqYscale*3 + freqYscale*(runtime%1000)/1000); y<freqCanvas.height; y+=freqYscale) {
+        //for (var y=(freqCanvas.height/2 - freqYScale*3 + freqYScale*(runtime%1000)/1000); y<freqCanvas.height; y+=freqYScale) {
         //    freqContext.beginPath();
         //    freqContext.moveTo(0, y);
         //    freqContext.lineTo(freqCanvas.width, y);
@@ -261,18 +314,34 @@
         freqContext.fillText("Time", 4, 3);
     }
 	
+	
+	function clearFreqPlot() {
+	
+		// Reset arrays except for most recent entry
+		var oldIn = inputList[0];
+		var oldOut = outputList[0];
+		
+		inputList = new Array(freqCanvas.height + 10 );
+		outputList = new Array(freqCanvas.height + 10 );		
+		
+		inputList[0] = oldIn;
+		outputList[0] = oldOut;
+		
+		drawFreqPlot();
+	}
+	
     function freqPoints() {
 	
 		drawFreqPlot();
 	
         freqContext.fillStyle = "rgba(128,0,255,0.95)";
 		inputList.forEach(function (item, index) {
-			freqContext.fillRect(freqCanvas.width/2 + freqXscale*item, index, 5, 5);	
+			freqContext.fillRect(freqCanvas.width/2 + freqXScale*item, index, 5, 5);	
 		});
        
 		freqContext.fillStyle = "rgba(255,0,128,0.95)";
 		outputList.forEach(function (item, index) {
-			freqContext.fillRect(freqCanvas.width/2 + freqXscale*item, index, 5, 5);	
+			freqContext.fillRect(freqCanvas.width/2 + freqXScale*item, index, 5, 5);	
 		});
     }
 	
@@ -284,13 +353,13 @@
         // Next draw gridlines:
         bodeContext.strokeStyle = "lightgray";
         bodeContext.lineWidth = 1;
-        for (var x=0; x<=bodeCanvas.width; x+=bodeXscale) {
+        for (var x=0; x<=bodeCanvas.width; x+=bodeXScale) {
             bodeContext.beginPath();
             bodeContext.moveTo(x, 0);
             bodeContext.lineTo(x, bodeCanvas.height);
             bodeContext.stroke();
         }
-        for (var y=0; y<bodeCanvas.height; y+=bodeYscale) {
+        for (var y=0; y<bodeCanvas.height; y+=bodeYScale) {
             bodeContext.beginPath();
             bodeContext.moveTo(0, y);
             bodeContext.lineTo(bodeCanvas.width, y);
@@ -307,18 +376,60 @@
 		bodeContext.textBaseline = "top";
         bodeContext.textAlign = "left";
         bodeContext.fillText('|Z|', 4, 4);
+		// 2nd y-label
         bodeContext.textAlign = "right";
         bodeContext.fillText('Phase', bodeCanvas.width-4, 4);
         bodeContext.textAlign = "left";
 	}
 	
+	// Add points to Bode plot
 	function bodePoints() {
 		bodeContext.fillStyle = "rgba(128,0,255,0.95)";
-		bodeContext.fillRect(freqSlider.value*bodeXScale, Math.abs(impedance).r, 5, 5);
+		bodeContext.fillRect(freqSlider.value/freqSlider.max*bodeCanvas.width*0.9 + bodeCanvas.width*0.05, bodeCanvas.height - (0.9*bodeCanvas.height * impedance.toPolar().r / (0.01*resistanceSlider.max)) + 0.05*bodeCanvas.height, 5, 5);
 		
-		bodeContext.fillStyle = "rgba(128,0,255,0.95)";
-		bodeContext.fillRect(freqSlider.value*bodeXScale, impedance.toPolar().Phi, 5, 5);	
+		bodeContext.fillStyle = "rgba(255,0,128,0.95)";
+		bodeContext.fillRect(freqSlider.value/freqSlider.max*bodeCanvas.width*0.9 + bodeCanvas.width*0.05, bodeCanvas.height - (0.9*bodeCanvas.height * impedance.toPolar().phi/90.0) - 0.05*bodeCanvas.height, 5, 5);	
 	}
+	
+	// Set up the Nyquist plot initially
+	function drawNyquistPlot() {
+		// First erase the plot with white:
+        nyquistContext.fillStyle = "white";
+        nyquistContext.fillRect(0, 0, nyquistCanvas.width, nyquistCanvas.height);
+        // Next draw gridlines:
+        nyquistContext.strokeStyle = "lightgray";
+        nyquistContext.lineWidth = 1;
+        for (var x=0; x<=nyquistCanvas.width; x+=nyquistXScale) {
+            nyquistContext.beginPath();
+            nyquistContext.moveTo(x, 0);
+            nyquistContext.lineTo(x, nyquistCanvas.height);
+            nyquistContext.stroke();
+        }
+        for (var y=0; y<nyquistCanvas.height; y+=nyquistYScale) {
+            nyquistContext.beginPath();
+            nyquistContext.moveTo(0, y);
+            nyquistContext.lineTo(nyquistCanvas.width, y);
+            nyquistContext.stroke();
+        }
+        // Finally draw labels:
+		// x-label
+        nyquistContext.font = "12px sans-serif";
+        nyquistContext.fillStyle = "black";
+        nyquistContext.textAlign = "center";
+        nyquistContext.textBaseline = "bottom";
+        nyquistContext.fillText("Z'", nyquistCanvas.width/2, nyquistCanvas.height-2);
+		// 1st y-label
+		nyquistContext.textBaseline = "top";
+        nyquistContext.textAlign = "left";
+        nyquistContext.fillText("-Z''", 4, 4);
+	}
+	
+	// Add points to Bode plot
+	function nyquistPoints() {
+		nyquistContext.fillStyle = "rgba(128,0,255,0.95)";
+		nyquistContext.fillRect(impedance.re/(0.01*resistanceSlider.max)*nyquistCanvas.width*0.9 + nyquistCanvas.width*0.05, nyquistCanvas.height - (0.9*nyquistCanvas.height * impedance.im / (0.01*resistanceSlider.max)) - 0.05*nyquistCanvas.height, 5, 5);	
+	}
+	
 
 </script>
 
