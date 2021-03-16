@@ -1,0 +1,327 @@
+
+<!DOCTYPE html>
+
+<!--
+    Interactive impedance simulation, copyright 2021, James Cumby
+	
+	
+	
+	
+	Adapted from examples found at https://physics.weber.edu/schroeder/html5/default.html
+	
+	Previous license:
+	Chaotic pendulum simulation, copyright 2013-2014, Daniel V. Schroeder
+    
+    Permission is hereby granted, free of charge, to any person obtaining a copy of 
+    this software and associated data and documentation (the "Software"), to deal in 
+    the Software without restriction, including without limitation the rights to 
+    use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies 
+    of the Software, and to permit persons to whom the Software is furnished to do 
+    so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all 
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+    INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A 
+    PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR 
+    ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR 
+    OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR 
+    OTHER DEALINGS IN THE SOFTWARE.
+
+    Except as contained in this notice, the name of the author shall not be used in 
+    advertising or otherwise to promote the sale, use or other dealings in this 
+    Software without prior written authorization.
+-->
+
+<head>
+    <meta charset="utf-8">
+    <title>Impedance Spectroscopy</title>
+    <style>
+        input[type="range"] {
+            width: 140px;
+            padding: 0px;       /* remove extra space in IE */
+            -webkit-user-select: none;
+            -moz-user-select: -moz-none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+        input[type="range"]::-ms-tooltip {
+            display: none;          /* hide automatic readout in IE */
+        }
+        input[type="range"]::-ms-track {
+            color: transparent;     /* hide tick marks in IE */
+        }   
+    </style>
+</head>
+
+<body style="background-color:#c0c0c0; font:15px sans-serif;">
+
+<div style="width:810px; margin-left:auto; margin-right:auto;">
+    <h1 style="font-size:24px; text-align:center;">Interactive Impedance Spectroscopy</h1>
+    <div style="width:200px; float:left; text-align:center;">
+        <input id="startButton" type="button" value="Start" onclick="startStop();" style="width:100px; font-size:16px; text-align:center;">
+		<span style="padding:0 30px 0 30px;">
+            Frequency (Hz) = <span id="freqReadout">0.50</span>
+            <input id="freqSlider" type="range" min="0" max="2.0" step="0.01" value="0.5" oninput="sliderChange()" onchange="sliderChange()">
+        </span>
+		<span style="padding:0 30px 0 30px;">
+            Resistance (&ohm;) = <span id="resistanceReadout">100</span>
+            <input id="resistanceSlider" type="range" min="1" max="500" step="1" value="100" oninput="sliderChange()" onchange="sliderChange()">
+        </span>
+        
+    </div>
+    <canvas id="imageCanvas" width="600" height="200" style="float:right; border:1px solid black;"></canvas>
+    <canvas id="bodeCanvas" width="250" height="300" style="margin-left:6px; border:1px solid black;"></canvas>
+	<canvas id="freqCanvas" width="250" height="300" style="margin-left:6px; border:1px solid black;"></canvas>
+	<canvas id="nyquistCanvas" width="250" height="300" style="margin-left:6px; border:1px solid black;"></canvas>
+	<div style="width:250px; margin-left: 7px; float:left; text-align:center;">
+			<input type="button" value="Clear Bode" onclick="initPlot()" style="width:200px; font-size:16px;">
+	</div>
+	<div style="width:250px; margin-left: 7px; float:left; text-align:center;">
+			<input type="button" value="Clear Frequency" onclick="drawFreqPlot()" style="width:200px; font-size:16px;">
+	</div>
+	<div style="width:250px; margin-left: 7px; float:left; text-align:center;">
+			<input type="button" value="Clear Nyquist" onclick="initPlot()" style="width:200px; font-size:16px;">
+	</div>
+
+    <p>
+        Some details about impedance spectroscopy here...
+	</p>
+</div>
+
+<script type="text/javascript" src="https://cdnjs.com/libraries/mathjs"></script>
+
+<script>
+
+    // Global variables:
+    var imageCanvas = document.getElementById("imageCanvas");
+    var imageContext = imageCanvas.getContext("2d");
+    var bodeCanvas = document.getElementById("bodeCanvas");
+    var bodeContext = bodeCanvas.getContext("2d");
+	var freqCanvas = document.getElementById("freqCanvas");
+    var freqContext = freqCanvas.getContext("2d");
+	var nyquistCanvas = document.getElementById("nyquistCanvas");
+    var nyquistContext = nyquistCanvas.getContext("2d");
+    var startButton = document.getElementById("startButton");
+    var freqSlider = document.getElementById("freqSlider");
+    var freqReadout = document.getElementById("freqReadout");
+	var resistanceSlider = document.getElementById("resistanceSlider");
+    var resistanceReadout = document.getElementById("resistanceReadout");
+	
+	
+	var inputList = new Array(freqCanvas.height + 10 );
+	var outputList = new Array(freqCanvas.height + 10 );
+	var phase;
+	var impedance = Math.complex(0,0)
+	
+	var starttime;
+	var runtime = 0;
+	var animReference;
+    var input = 1;          // input force
+    var output = 0;          // pendulum angular velocity
+    var running = false;
+    var freqXScale, freqYScale;
+	var bodeXScale, bodeYScale;
+	var nyquistXScale, nyquistYScale;
+    var ratio;              // scaling ratio for high-resolution (retina) displays
+
+    window.onload = init;   // initialize when ready!
+
+    // Initialize the graphics:
+    function init() {
+        freqXscale = freqCanvas.width/2;    // pixels per unit
+        freqYscale = freqCanvas.height / 7; // pixels per unit
+		bodeXscale = bodeCanvas.width/5;    // pixels per unit
+        bodeYscale = bodeCanvas.height / 7; // pixels per unit
+		drawPipes();
+        //drawPendulum();
+        drawFreqPlot();
+		drawBodePlot();
+        //driveAmpChange();       // needed for Firefox, which remembers old setting upon reload
+    }
+
+	// Update with time
+	function run(timestamp) {
+	
+		//if browser doesn't support requestAnimationFrame, generate our own timestamp using Date:
+		var timestamp = timestamp || new Date().getTime()
+		runtime = timestamp - starttime
+		
+		// Generate input cosine
+		var omega = 2*Math.PI*freqSlider.value
+		var forceIn = input * Math.cos( runtime/1000 * omega );
+
+		impedance.re = (1+resistanceSlider.value/100)
+
+		// Calculate output current for 'resistor' (very approximately)
+		var forceOut = forceIn / impedance;
+
+		// Manually set phase=0 for an ideal resistor
+		phase = 0;
+		
+		
+		inputList.unshift(forceIn);
+		if (inputList.length > (freqCanvas.height + 10) ) {
+			inputList.pop()
+			}
+			
+		outputList.unshift(forceOut);
+		if (outputList.length > (freqCanvas.height + 10) ) {
+			outputList.pop()
+			}
+		
+		freqPoints();
+		bodePoints();
+		
+		animReference = requestAnimationFrame(function(timestamp){
+			run(timestamp)
+		});
+		
+
+	}
+
+
+    // Function to implement start/stop button click:
+    function startStop() {
+        running = !running;
+        if (running) {
+            requestAnimationFrame(function(timestamp){
+				starttime = timestamp - runtime || new Date().getTime() - runtime; //if browser doesn't support requestAnimationFrame, generate our own timestamp using Date
+				run(timestamp);
+			});
+            startButton.value = "Pause";
+        } else {
+			cancelAnimationFrame(animReference);
+            startButton.value = "Resume";
+        }
+    }
+
+    // Function to update drive amplitude readout:
+    function sliderChange() {
+        freqReadout.innerHTML = Number(freqSlider.value).toFixed(2);
+		resistanceReadout.innerHTML = Number(resistanceSlider.value).toFixed(0);
+		drawPipes();
+    }
+
+	// Draw the static elements of the image
+	function drawPipes() {
+		imageContext.fillStyle="white";
+		imageContext.fillRect(0, 0, imageCanvas.width, imageCanvas.height);
+        imageContext.strokeStyle = "black";
+        imageContext.lineWidth = 5;
+		imageContext.beginPath();
+
+		imageContext.moveTo(imageCanvas.width*0.05, imageCanvas.height*0.1);
+		imageContext.lineTo(imageCanvas.width*0.4,imageCanvas.height*0.1);
+		imageContext.lineTo(imageCanvas.width*0.4, imageCanvas.height*0.1+0.1*resistanceSlider.value);
+		imageContext.lineTo(imageCanvas.width*0.6, imageCanvas.height*0.1+0.1*resistanceSlider.value);
+		imageContext.lineTo(imageCanvas.width*0.6,imageCanvas.height*0.1);
+		imageContext.lineTo(imageCanvas.width*0.95, imageCanvas.height*0.1);
+
+		imageContext.moveTo(imageCanvas.width*0.05,imageCanvas.height*0.9);
+		imageContext.lineTo(imageCanvas.width*0.4,imageCanvas.height*0.9);
+		imageContext.lineTo(imageCanvas.width*0.4, imageCanvas.height*0.9-0.1*resistanceSlider.value);
+		imageContext.lineTo(imageCanvas.width*0.6, imageCanvas.height*0.9-0.1*resistanceSlider.value);
+		imageContext.lineTo(imageCanvas.width*0.6,imageCanvas.height*0.9);
+		imageContext.lineTo(imageCanvas.width*0.95, imageCanvas.height*0.9);
+        imageContext.stroke();
+	}
+
+
+
+    // Initialize the plot canvas:
+    function drawFreqPlot() {
+        // First erase the plot with white:
+        freqContext.fillStyle = "white";
+        freqContext.fillRect(0, 0, freqCanvas.width, freqCanvas.height);
+        // Next draw gridlines:
+        freqContext.strokeStyle = "lightgray";
+        freqContext.lineWidth = 1;
+        for (var x=0; x<=freqCanvas.width; x+=freqXscale/2) {
+            freqContext.beginPath();
+            freqContext.moveTo(x, 0);
+            freqContext.lineTo(x, freqCanvas.height);
+            freqContext.stroke();
+        }
+        //for (var y=(freqCanvas.height/2 - freqYscale*3 + freqYscale*(runtime%1000)/1000); y<freqCanvas.height; y+=freqYscale) {
+        //    freqContext.beginPath();
+        //    freqContext.moveTo(0, y);
+        //    freqContext.lineTo(freqCanvas.width, y);
+        //    freqContext.stroke();
+        //}
+        // Finally draw labels:
+        freqContext.font = "12px sans-serif";
+        freqContext.fillStyle = "black";
+        freqContext.textAlign = "center";
+        freqContext.textBaseline = "bottom";
+        freqContext.fillText("Force", freqCanvas.width/2, freqCanvas.height-2);
+        freqContext.textAlign = "left";
+        freqContext.textBaseline = "top";
+        freqContext.fillText("Time", 4, 3);
+    }
+	
+    function freqPoints() {
+	
+		drawFreqPlot();
+	
+        freqContext.fillStyle = "rgba(128,0,255,0.95)";
+		inputList.forEach(function (item, index) {
+			freqContext.fillRect(freqCanvas.width/2 + freqXscale*item, index, 5, 5);	
+		});
+       
+		freqContext.fillStyle = "rgba(255,0,128,0.95)";
+		outputList.forEach(function (item, index) {
+			freqContext.fillRect(freqCanvas.width/2 + freqXscale*item, index, 5, 5);	
+		});
+    }
+	
+	// Set up the Bode plot initially
+	function drawBodePlot() {
+		// First erase the plot with white:
+        bodeContext.fillStyle = "white";
+        bodeContext.fillRect(0, 0, bodeCanvas.width, bodeCanvas.height);
+        // Next draw gridlines:
+        bodeContext.strokeStyle = "lightgray";
+        bodeContext.lineWidth = 1;
+        for (var x=0; x<=bodeCanvas.width; x+=bodeXscale) {
+            bodeContext.beginPath();
+            bodeContext.moveTo(x, 0);
+            bodeContext.lineTo(x, bodeCanvas.height);
+            bodeContext.stroke();
+        }
+        for (var y=0; y<bodeCanvas.height; y+=bodeYscale) {
+            bodeContext.beginPath();
+            bodeContext.moveTo(0, y);
+            bodeContext.lineTo(bodeCanvas.width, y);
+            bodeContext.stroke();
+        }
+        // Finally draw labels:
+		// x-label
+        bodeContext.font = "12px sans-serif";
+        bodeContext.fillStyle = "black";
+        bodeContext.textAlign = "center";
+        bodeContext.textBaseline = "bottom";
+        bodeContext.fillText("Frequency", bodeCanvas.width/2, bodeCanvas.height-2);
+		// 1st y-label
+		bodeContext.textBaseline = "top";
+        bodeContext.textAlign = "left";
+        bodeContext.fillText('|Z|', 4, 4);
+        bodeContext.textAlign = "right";
+        bodeContext.fillText('Phase', bodeCanvas.width-4, 4);
+        bodeContext.textAlign = "left";
+	}
+	
+	function bodePoints() {
+		bodeContext.fillStyle = "rgba(128,0,255,0.95)";
+		bodeContext.fillRect(freqSlider.value*bodeXScale, Math.abs(impedance).r, 5, 5);
+		
+		bodeContext.fillStyle = "rgba(128,0,255,0.95)";
+		bodeContext.fillRect(freqSlider.value*bodeXScale, impedance.toPolar().Phi, 5, 5);	
+	}
+
+</script>
+
+</body>
+
+</html>
