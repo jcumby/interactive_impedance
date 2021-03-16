@@ -252,6 +252,26 @@
 		imageContext.lineWidth = 5;
 		imageContext.stroke();
 		
+		imageContext.beginPath();
+		imageContext.moveTo(shiftScale*pistonIn+0.2*imageCanvas.width, imageCanvas.height*0.5);
+		imageContext.lineTo(shiftScale*pistonIn+0.2*imageCanvas.width+100*inputList[0], imageCanvas.height*0.5);
+		imageContext.lineTo(shiftScale*pistonIn+0.2*imageCanvas.width+100*inputList[0] - imageCanvas.width*0.02*Math.sign(inputList[0]), imageCanvas.height*0.53);
+		imageContext.moveTo(shiftScale*pistonIn+0.2*imageCanvas.width+100*inputList[0], imageCanvas.height*0.5);
+		imageContext.lineTo(shiftScale*pistonIn+0.2*imageCanvas.width+100*inputList[0] - imageCanvas.width*0.02*Math.sign(inputList[0]), imageCanvas.height*0.47);
+		imageContext.strokeStyle = "rgba(128,0,255,0.95)";
+		imageContext.lineWidth = 5;
+		imageContext.stroke();		
+		
+		
+		imageContext.beginPath();
+		imageContext.moveTo(shiftScale*pistonOut+0.8*imageCanvas.width, imageCanvas.height*0.5);
+		imageContext.lineTo(shiftScale*pistonOut+0.8*imageCanvas.width+100*outputList[0], imageCanvas.height*0.5);
+		imageContext.lineTo(shiftScale*pistonOut+0.8*imageCanvas.width+100*outputList[0] - imageCanvas.width*0.02*Math.sign(outputList[0]), imageCanvas.height*0.53);
+		imageContext.moveTo(shiftScale*pistonOut+0.8*imageCanvas.width+100*outputList[0], imageCanvas.height*0.5);
+		imageContext.lineTo(shiftScale*pistonOut+0.8*imageCanvas.width+100*outputList[0] - imageCanvas.width*0.02*Math.sign(outputList[0]), imageCanvas.height*0.47);
+		imageContext.strokeStyle = "rgba(255,0,128,0.95)";
+		imageContext.lineWidth = 5;
+		imageContext.stroke();	
 
 		
 		
