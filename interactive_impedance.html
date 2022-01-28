@@ -60,16 +60,36 @@
 <div style="width:810px; margin-left:auto; margin-right:auto;">
     <h1 style="font-size:24px; text-align:center;">Interactive Impedance Spectroscopy</h1>
     <div style="width:200px; float:left; text-align:center;">
-        <input id="startButton" type="button" value="Start" onclick="startStop();" style="width:100px; font-size:16px; text-align:center;">
+        <input id="startButton" type="button" value="Start" onclick="startStop();" style="width:90px; font-size:16px; text-align:center;">
+		<input id="resetButton" type="button" value="Reset" onclick="init();" style="width:90px; font-size:16px; text-align:center;">
 		<span style="padding:0 30px 0 30px;">
             Frequency (Hz) = <span id="freqReadout">0.50</span>
-            <input id="freqSlider" type="range" min="0" max="2.0" step="0.01" value="0.5" oninput="sliderChange()" onchange="sliderChange()">
+            <input id="freqSlider" type="range" min="0.1" max="2.0" step="0.01" value="0.5" oninput="sliderChange()" onchange="sliderChange()">
         </span>
 		<span style="padding:0 30px 0 30px;">
-            Resistance (&ohm;) = <span id="resistanceReadout">100</span>
-            <input id="resistanceSlider" type="range" min="1" max="500" step="1" value="100" oninput="sliderChange()" onchange="sliderChange()">
+            Resistance (&ohm;) = <span id="resistanceReadout">5.0</span>
+            <input id="resistanceSlider" type="range" min="1" max="20" step="0.1" value="5" oninput="sliderChange()" onchange="sliderChange()">
+        </span>
+		<span style="padding:0 30px 0 30px;">
+            Capacitance (F) = <span id="capacitanceReadout">0.100</span>
+            <input id="capacitanceSlider" type="range" min="0.001" max="0.3" step="0.001" value="0.1" oninput="sliderChange()" onchange="sliderChange()">
         </span>
         
+		<span style="text-align:left;">
+			<div>
+			<input type="radio" id="radioR" value="R" name="radiogroup" checked onclick="init()">
+			<label for="radioR">Resistor</label>
+			</div>
+			<div>
+			<input type="radio" id="radioC" value="C" name="radiogroup" onclick="init()">
+			<label for="radioC">Capacitor</label>
+			</div>
+			<div>
+			<input type="radio" id="radioRC" value="RC" name="radiogroup" onclick="init()">
+			<label for="radioRC">Parallel RC</label>
+			</div>
+		</span>
+		
     </div>
     <canvas id="imageCanvas" width="600" height="200" style="float:right; border:1px solid black;"></canvas>
     <canvas id="bodeCanvas" width="250" height="300" style="margin-left:6px; border:1px solid black;"></canvas>
@@ -79,15 +99,12 @@
 			<input type="button" value="Clear Bode" onclick="drawBodePlot()" style="width:200px; font-size:16px;">
 	</div>
 	<div style="width:250px; margin-left: 7px; float:left; text-align:center;">
-			<input type="button" value="Clear Frequency" onclick="clearFreqPlot()" style="width:200px; font-size:16px;">
+			<input type="button" value="Clear Signals" onclick="clearFreqPlot()" style="width:200px; font-size:16px;">
 	</div>
 	<div style="width:250px; margin-left: 7px; float:left; text-align:center;">
 			<input type="button" value="Clear Nyquist" onclick="drawNyquistPlot()" style="width:200px; font-size:16px;">
 	</div>
 
-    <p>
-        Some details about impedance spectroscopy here...
-	</p>
 </div>
 
 <script type="text/javascript" src="./math.js"></script>
@@ -108,21 +125,33 @@
     var freqReadout = document.getElementById("freqReadout");
 	var resistanceSlider = document.getElementById("resistanceSlider");
     var resistanceReadout = document.getElementById("resistanceReadout");
+	var capacitanceSlider = document.getElementById("capacitanceSlider");
+    var capacitanceReadout = document.getElementById("capacitanceReadout");
 	
-	
+	var buttonR = document.getElementById("radioR");
+	var buttonC = document.getElementById("radioC");
+	var buttonRC = document.getElementById("radioRC");
+
 	var inputList = new Array(freqCanvas.height + 10 );
 	var outputList = new Array(freqCanvas.height + 10 );
 	var phase;
 	var impedance = math.complex(0,0)
 	
-	var pistonIn = 0
-	var pistonOut = 0
-	
+	var pistonIn;
+	var pistonOut;
+	var pistonMin;
+	var pistonMax;
+	var forceIn;
+	var forceOut;
+	var shiftScale;
+	var capacitorPos;
+
+
 	var starttime;
 	var runtime = 0;
 	var animReference;
-    var input = 1;          // input force
-    var output = 0;          // pendulum angular velocity
+    var input = 1;          // max input force
+    var outputScale = 30;
     var running = false;
     var freqXScale, freqYScale;
 	var bodeXScale, bodeYScale;
@@ -131,21 +160,93 @@
 
     window.onload = init;   // initialize when ready!
 
-    // Initialize the graphics:
+    // Initialize the graphics and reset variables to initial values:
     function init() {
+	
+		inputList = new Array(freqCanvas.height + 10 );
+		outputList = new Array(freqCanvas.height + 10 );
+		phase;
+		impedance = math.complex(0,0)
+	
+		forceIn = 0;
+		forceOut = 0;
+		shiftScale = 3;
+		capacitorPos = 0;
+		runtime = 0;
+	
         freqXScale = freqCanvas.width/2;    // pixels per unit
         freqYScale = freqCanvas.height / 7; // pixels per unit
 		bodeXScale = bodeCanvas.width / 5;    // pixels per unit
         bodeYScale = bodeCanvas.height / 7; // pixels per unit
 		nyquistXScale = nyquistCanvas.width / 5;    // pixels per unit
-        nyquistYScale = nyquistCanvas.height / 7; // pixels per unit		
-		drawPipes();
-        //drawPendulum();
+        nyquistYScale = nyquistCanvas.height / 7; // pixels per unit
+
+		calculateImpedance();
+
+		var omega = 2*Math.PI*freqSlider.value;
+		pistonIn = outputScale*input * Math.sin( runtime/1000 * omega + impedance.toPolar().phi) / (impedance.toPolar().r*omega);
+		pistonOut = outputScale*input * Math.sin( runtime/1000 * omega + impedance.toPolar().phi) / (impedance.toPolar().r*omega);
+		capacitorPos = outputScale*input * Math.sin( runtime/1000 * omega + impedance.toPolar().phi) / (impedance.toPolar().r*omega);
+		
+		sliderChange();
+		
+		if (buttonR.checked == true) {
+			//pistonIn = 0;
+			//pistonOut = 0;
+			//drawResistor();
+			resistanceSlider.disabled = false;
+			capacitanceSlider.disabled = true;
+			capacitanceReadout.innerHTML = 'NA';
+        } else if (buttonC.checked == true) {
+			// Set initial positions at t=0
+
+			//capacitorPos = outputScale*input * Math.sin( runtime/1000 * omega + impedance.toPolar().phi) / (impedance.toPolar().r*omega);
+			//pistonIn = outputScale*input * Math.sin( runtime/1000 * omega + impedance.toPolar().phi) / (impedance.toPolar().r*omega);
+			//pistonOut = outputScale*input * Math.sin( runtime/1000 * omega + impedance.toPolar().phi) / (impedance.toPolar().r*omega);
+			//capacitorPos = outputScale*input * Math.sin( runtime/1000 * omega + impedance.toPolar().phi) / (impedance.toPolar().r*omega);
+			//drawCapacitor();
+			
+			resistanceSlider.disabled = true;
+			resistanceReadout.innerHTML = 'NA';
+			capacitanceSlider.disabled = false;
+		} else if (buttonRC.checked == true) {
+			//drawRC();
+			resistanceSlider.disabled = false;
+			capacitanceSlider.disabled = false;
+		}
+		
+		drawRC();
         drawFreqPlot();
 		drawBodePlot();
 		drawNyquistPlot();
-        //driveAmpChange();       // needed for Firefox, which remembers old setting upon reload
+		
+		if (running == true) {
+			startStop();
+		}
+		startButton.value = "Start";
     }
+
+
+	function calculateImpedance() {
+		// Determine overall impedance from sliders
+
+		var omega = 2*Math.PI*freqSlider.value;		
+		
+		var complexR = math.complex(resistanceSlider.value,0);
+		var complexC = math.complex(0,1.0/(omega*capacitanceSlider.value));
+		
+		// in parallel, Z_tot = Z_1Z_2 / (Z_1 + Z_2)
+		var complexRC = math.divide(math.multiply(complexR, complexC), math.add(complexR, complexC));
+		
+		if (buttonR.checked == true) {
+			impedance = complexR;
+        } else if (buttonC.checked == true) {
+			impedance = complexC;
+		} else if (buttonRC.checked == true) {
+			impedance = complexRC;
+		}
+		
+	}
 
 	// Update with time
 	function run(timestamp) {
@@ -154,15 +255,17 @@
 		var timestamp = timestamp || new Date().getTime()
 		runtime = timestamp - starttime
 		
-		// Generate input cosine
+		// Generate input cosine (used instead of sin to make animation start in the middle)
 		var omega = 2*Math.PI*freqSlider.value
-		var forceIn = input * Math.cos( runtime/1000 * omega );
+		forceIn = input * Math.cos( runtime/1000 * omega );
+		//var forceIn = math.multiply(input, math.exp( math.multiply(math.complex(0,1), omega, runtime/1000) ));
 
-		impedance.re = (1+resistanceSlider.value/100);
-		impedance.im = 0;
+		// Calculate impedance
+		calculateImpedance();
 
-		// Calculate output current for 'resistor' (very approximately)
-		var forceOut = forceIn / impedance;
+		// Calculate output current
+		//var forceOut = math.divide(forceIn, impedance);
+		forceOut = input * Math.cos( runtime/1000 * omega + impedance.toPolar().phi) / impedance.toPolar().r
 		
 		inputList.unshift(forceIn);
 		if (inputList.length > (freqCanvas.height + 10) ) {
@@ -173,12 +276,20 @@
 		if (outputList.length > (freqCanvas.height + 10) ) {
 			outputList.pop()
 			}
-			
-		// Update piston positions
-		pistonIn += inputList[0]
-		pistonOut += outputList[0]
 		
-		drawPipes();
+		// Update global position variables if needed, and update plots
+		capacitorPos = Math.sin(impedance.toPolar().phi) * outputScale*input * Math.sin( runtime/1000 * omega + impedance.toPolar().phi) / (impedance.toPolar().r*omega)
+		pistonIn = outputScale*input * Math.sin( runtime/1000 * omega + impedance.toPolar().phi) / (impedance.toPolar().r*omega)
+		pistonOut = outputScale*input * Math.sin( runtime/1000 * omega + impedance.toPolar().phi) / (impedance.toPolar().r*omega)
+
+		if (buttonR.checked == true) {
+			//drawResistor();
+        } else if (buttonC.checked == true) {
+			//drawCapacitor();
+		} else if (buttonRC.checked == true) {
+			//drawRC();
+		}		
+		drawRC();
 		
 		freqPoints();
 		bodePoints();
@@ -210,39 +321,21 @@
     // Function to update drive amplitude readout:
     function sliderChange() {
         freqReadout.innerHTML = Number(freqSlider.value).toFixed(2);
-		resistanceReadout.innerHTML = Number(resistanceSlider.value).toFixed(0);
-		drawPipes();
+		resistanceReadout.innerHTML = Number(resistanceSlider.value).toFixed(1);
+		capacitanceReadout.innerHTML = Number(capacitanceSlider.value).toFixed(3);
+		if (buttonR.checked == true) {
+			//drawResistor();
+        } else if (buttonC.checked == true) {
+			//drawCapacitor();
+		} else if (buttonRC.checked == true) {
+			//drawRC();
+		}	
+		drawRC();
     }
 
-	// Draw the static elements of the image
-	function drawPipes() {
-		imageContext.fillStyle="white";
-		imageContext.fillRect(0, 0, imageCanvas.width, imageCanvas.height);
-		
-		
-		imageContext.fillStyle="lightblue";
-		
-		var shiftScale = 3;
-		
-		// Draw fluid
-		imageContext.beginPath();
-		imageContext.moveTo(shiftScale*pistonIn+0.2*imageCanvas.width, imageCanvas.height*0.1);
-		imageContext.lineTo(imageCanvas.width*0.4,imageCanvas.height*0.1);
-		imageContext.lineTo(imageCanvas.width*0.4, imageCanvas.height*0.1+0.1*resistanceSlider.value);
-		imageContext.lineTo(imageCanvas.width*0.6, imageCanvas.height*0.1+0.1*resistanceSlider.value);
-		imageContext.lineTo(imageCanvas.width*0.6,imageCanvas.height*0.1);
-		imageContext.lineTo(shiftScale*pistonOut + 0.8*imageCanvas.width, imageCanvas.height*0.1);
 
-		imageContext.lineTo(shiftScale*pistonOut + 0.8*imageCanvas.width,imageCanvas.height*0.9);
-		imageContext.lineTo(imageCanvas.width*0.6,imageCanvas.height*0.9);
-		imageContext.lineTo(imageCanvas.width*0.6, imageCanvas.height*0.9-0.1*resistanceSlider.value);
-		imageContext.lineTo(imageCanvas.width*0.4, imageCanvas.height*0.9-0.1*resistanceSlider.value);
-		imageContext.lineTo(imageCanvas.width*0.4,imageCanvas.height*0.9);
-		imageContext.lineTo(shiftScale*pistonIn+0.2*imageCanvas.width, imageCanvas.height*0.9);
-		imageContext.closePath();
-        imageContext.fill();
-		
-		// Draw pistons and forces
+	function drawPistons() {
+		// Draw pistons
 		imageContext.beginPath();
 		imageContext.moveTo(shiftScale*pistonIn+0.2*imageCanvas.width, imageCanvas.height*0.1);
 		imageContext.lineTo(shiftScale*pistonIn+0.2*imageCanvas.width, imageCanvas.height*0.9);
@@ -252,17 +345,18 @@
 		imageContext.lineWidth = 5;
 		imageContext.stroke();
 		
+		// Input force
 		imageContext.beginPath();
+		imageContext.moveTo(shiftScale*pistonIn+0.2*imageCanvas.width - 100*inputList[0], imageCanvas.height*0.5);
+		imageContext.lineTo(shiftScale*pistonIn+0.2*imageCanvas.width, imageCanvas.height*0.5);
+		imageContext.lineTo(shiftScale*pistonIn+0.2*imageCanvas.width - imageCanvas.width*0.02*Math.sign(inputList[0]), imageCanvas.height*0.53);
 		imageContext.moveTo(shiftScale*pistonIn+0.2*imageCanvas.width, imageCanvas.height*0.5);
-		imageContext.lineTo(shiftScale*pistonIn+0.2*imageCanvas.width+100*inputList[0], imageCanvas.height*0.5);
-		imageContext.lineTo(shiftScale*pistonIn+0.2*imageCanvas.width+100*inputList[0] - imageCanvas.width*0.02*Math.sign(inputList[0]), imageCanvas.height*0.53);
-		imageContext.moveTo(shiftScale*pistonIn+0.2*imageCanvas.width+100*inputList[0], imageCanvas.height*0.5);
-		imageContext.lineTo(shiftScale*pistonIn+0.2*imageCanvas.width+100*inputList[0] - imageCanvas.width*0.02*Math.sign(inputList[0]), imageCanvas.height*0.47);
+		imageContext.lineTo(shiftScale*pistonIn+0.2*imageCanvas.width - imageCanvas.width*0.02*Math.sign(inputList[0]), imageCanvas.height*0.47);
 		imageContext.strokeStyle = "rgba(128,0,255,0.95)";
 		imageContext.lineWidth = 5;
 		imageContext.stroke();		
 		
-		
+		// Output force
 		imageContext.beginPath();
 		imageContext.moveTo(shiftScale*pistonOut+0.8*imageCanvas.width, imageCanvas.height*0.5);
 		imageContext.lineTo(shiftScale*pistonOut+0.8*imageCanvas.width+100*outputList[0], imageCanvas.height*0.5);
@@ -272,36 +366,86 @@
 		imageContext.strokeStyle = "rgba(255,0,128,0.95)";
 		imageContext.lineWidth = 5;
 		imageContext.stroke();	
+	}
 
+	function drawRC() {
+		// Draw a mixture of resitor/capacitor components
 		
+		imageContext.fillStyle="white";
+		imageContext.fillRect(0, 0, imageCanvas.width, imageCanvas.height);	
+
+		imageContext.fillStyle="lightblue";
+		// Draw fluid to fit pipework shape
+		imageContext.beginPath();
+		imageContext.moveTo(shiftScale*pistonIn+0.2*imageCanvas.width, imageCanvas.height*0.1);
+		imageContext.lineTo(shiftScale*pistonOut + 0.8*imageCanvas.width, imageCanvas.height*0.1);
+
+		imageContext.lineTo(shiftScale*pistonOut + 0.8*imageCanvas.width,imageCanvas.height*0.9);
+		imageContext.lineTo(shiftScale*pistonIn+0.2*imageCanvas.width, imageCanvas.height*0.9);
+		imageContext.closePath();
+        imageContext.fill();
 		
+		drawPistons();	
+		
+		// Draw pipe outline to match capacitor shape
         imageContext.strokeStyle = "black";
         imageContext.lineWidth = 5;
 		imageContext.beginPath();
 
-		imageContext.moveTo(imageCanvas.width*0.05, imageCanvas.height*0.1);
-		imageContext.lineTo(imageCanvas.width*0.4,imageCanvas.height*0.1);
-		imageContext.lineTo(imageCanvas.width*0.4, imageCanvas.height*0.1+0.1*resistanceSlider.value);
-		imageContext.lineTo(imageCanvas.width*0.6, imageCanvas.height*0.1+0.1*resistanceSlider.value);
-		imageContext.lineTo(imageCanvas.width*0.6,imageCanvas.height*0.1);
-		imageContext.lineTo(imageCanvas.width*0.95, imageCanvas.height*0.1);
+		imageContext.moveTo(imageCanvas.width*0.00, imageCanvas.height*0.1);
+		imageContext.lineTo(imageCanvas.width*1, imageCanvas.height*0.1);
 
-		imageContext.moveTo(imageCanvas.width*0.05,imageCanvas.height*0.9);
-		imageContext.lineTo(imageCanvas.width*0.4,imageCanvas.height*0.9);
-		imageContext.lineTo(imageCanvas.width*0.4, imageCanvas.height*0.9-0.1*resistanceSlider.value);
-		imageContext.lineTo(imageCanvas.width*0.6, imageCanvas.height*0.9-0.1*resistanceSlider.value);
-		imageContext.lineTo(imageCanvas.width*0.6,imageCanvas.height*0.9);
-		imageContext.lineTo(imageCanvas.width*0.95, imageCanvas.height*0.9);
+		imageContext.moveTo(imageCanvas.width*0.00,imageCanvas.height*0.9);
+		imageContext.lineTo(imageCanvas.width*1, imageCanvas.height*0.9);
         imageContext.stroke();
 		
 		
-
+		if (capacitanceSlider.disabled == false) {
+			// 'springs'
+			imageContext.beginPath();
+			imageContext.moveTo(imageCanvas.width*0.5, imageCanvas.height*0.1);
+			imageContext.lineTo(imageCanvas.width*0.5 + shiftScale*capacitorPos, imageCanvas.height*0.1);
+			imageContext.moveTo(imageCanvas.width*0.5, imageCanvas.height*0.9);
+			imageContext.lineTo(imageCanvas.width*0.5 + shiftScale*capacitorPos, imageCanvas.height*0.9);
+			imageContext.strokeStyle = "gray";
+			imageContext.lineWidth = parseInt(30-capacitanceSlider.value*100);
+			imageContext.stroke();		
+			// 'spring' attachment
+			imageContext.beginPath();
+			imageContext.arc(imageCanvas.width*0.5, imageCanvas.height*0.1, 6, 0, 2*Math.PI);
+			imageContext.fillStyle="gray";
+			imageContext.fill();
+			imageContext.strokeStyle = "black";
+			imageContext.lineWidth = 3;
+			imageContext.stroke();
+			imageContext.beginPath();
+			imageContext.arc(imageCanvas.width*0.5, imageCanvas.height*0.9, 6, 0, 2*Math.PI);
+			imageContext.fillStyle="gray";
+			imageContext.fill();
+			imageContext.strokeStyle = "black";
+			imageContext.stroke();
+		}	
+			
+			
+		// Add barrier
+		imageContext.lineWidth = 16;
+		
+		// remove hole if pure capacitor
+		if (resistanceSlider.disabled == false) {
+			var holeOffset = (resistanceSlider.value/resistanceSlider.max)*imageCanvas.height*0.35;}
+		else {
+			var holeOffset = imageCanvas.height*0.5
+		}
+		
+		imageContext.beginPath();
+		imageContext.moveTo( imageCanvas.width*0.5 + shiftScale*capacitorPos , imageCanvas.height*0.1);
+		imageContext.lineTo( imageCanvas.width*0.5 + shiftScale*capacitorPos , imageCanvas.height*0.1+holeOffset);
+		imageContext.moveTo( imageCanvas.width*0.5 + shiftScale*capacitorPos , imageCanvas.height*0.9);
+		imageContext.lineTo( imageCanvas.width*0.5 + shiftScale*capacitorPos , imageCanvas.height*0.9-holeOffset);
+		imageContext.stroke();	
+		
+		
 	}
-
-	function animatePistons() {
-
-	}
-
 
     // Initialize the plot canvas:
     function drawFreqPlot() {
@@ -405,10 +549,10 @@
 	// Add points to Bode plot
 	function bodePoints() {
 		bodeContext.fillStyle = "rgba(128,0,255,0.95)";
-		bodeContext.fillRect(freqSlider.value/freqSlider.max*bodeCanvas.width*0.9 + bodeCanvas.width*0.05, bodeCanvas.height - (0.9*bodeCanvas.height * impedance.toPolar().r / (0.01*resistanceSlider.max)) + 0.05*bodeCanvas.height, 5, 5);
+		bodeContext.fillRect(freqSlider.value/freqSlider.max*bodeCanvas.width*0.9 + bodeCanvas.width*0.05, bodeCanvas.height - (0.9*bodeCanvas.height * impedance.toPolar().r / (resistanceSlider.max)) + 0.05*bodeCanvas.height, 5, 5);
 		
 		bodeContext.fillStyle = "rgba(255,0,128,0.95)";
-		bodeContext.fillRect(freqSlider.value/freqSlider.max*bodeCanvas.width*0.9 + bodeCanvas.width*0.05, bodeCanvas.height - (0.9*bodeCanvas.height * impedance.toPolar().phi/90.0) - 0.05*bodeCanvas.height, 5, 5);	
+		bodeContext.fillRect(freqSlider.value/freqSlider.max*bodeCanvas.width*0.9 + bodeCanvas.width*0.05, bodeCanvas.height - (0.9*bodeCanvas.height * impedance.toPolar().phi*2/math.PI) - 0.05*bodeCanvas.height, 5, 5);	
 	}
 	
 	// Set up the Nyquist plot initially
@@ -447,9 +591,37 @@
 	// Add points to Bode plot
 	function nyquistPoints() {
 		nyquistContext.fillStyle = "rgba(128,0,255,0.95)";
-		nyquistContext.fillRect(impedance.re/(0.01*resistanceSlider.max)*nyquistCanvas.width*0.9 + nyquistCanvas.width*0.05, nyquistCanvas.height - (0.9*nyquistCanvas.height * impedance.im / (0.01*resistanceSlider.max)) - 0.05*nyquistCanvas.height, 5, 5);	
+		nyquistContext.fillRect(impedance.re/(resistanceSlider.max)*nyquistCanvas.width*0.9 + nyquistCanvas.width*0.05, nyquistCanvas.height - (0.9*nyquistCanvas.height * impedance.im / (resistanceSlider.max)) - 0.05*nyquistCanvas.height, 5, 5);	
 	}
 	
+	
+	// Improve accessibility with keyboard shortcuts
+	document.onkeydown = function(e) {
+		if(e.keyCode === 32) { // The spacebar
+			startStop();
+		}
+		else if (e.keyCode === 27) {// Esc key
+			init();
+		}
+		else if (e.keyCode === 70) {// f key
+			document.getElementById('freqSlider').focus();
+		}
+		else if (e.keyCode === 82) {//r key
+			document.getElementById('resistanceSlider').focus();
+		}
+		else if (e.keyCode === 67) {// c key
+			document.getElementById('capacitanceSlider').focus();
+		}
+		else if (e.keyCode === 66) {// b key
+			drawBodePlot();
+		}
+		else if (e.keyCode === 78) {//n key
+			drawNyquistPlot();
+		}
+		else if (e.keyCode === 83) {// s key
+			clearFreqPlot();
+		}
+};
 
 </script>
 
