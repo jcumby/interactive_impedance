@@ -1,7 +1,3 @@
----
-usemathjax: true
----
-
 
 ## Simulator to understand impedance spectroscopy
 
@@ -89,11 +85,7 @@ though the voltage has changed direction, it takes a while for the current to ch
 
 ## Notes
 
-[^1]: Note that resistance (and impedance) depends on how much material you have; a 3 cm long wire has 
-10,000 times less resistance than a 3 km long wire! To get round this, materials scientists refer to the 
-'resistivity' of a material, which is independent of how much of it there is. In this tutorial, we 
-are ignoring this difference for simplicity.
+[^1]: Note that resistance (and impedance) depends on how much material you have; a 3 cm long wire has 10,000 times less resistance than a 3 km long wire! To get round this, materials scientists refer to the 'resistivity' of a material, which is independent of how much of it there is. In this tutorial, we are ignoring this difference for simplicity.
 [^2]: Conductivity is the inverse of resistivity, i.e. a higher resistivity gives a lower conductivity.
-[^3]: This is not as crazy as it seems; electrons are typically 'bound' to atoms, and although they can
-slosh around a bit, they often cannot escape the atom completely.
+[^3]: This is not as crazy as it seems; electrons are typically 'bound' to atoms, and although they can slosh around a bit, they often cannot escape the atom completely.
 [^4]: Here we are using angular frequency to simplify things, but it is related to the frequency $f$ (in Hz) by $\omega = 2\pi f$.
