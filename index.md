@@ -1,4 +1,4 @@
-<h1> Interactive Impedance Simulation </h1>
+# Interactive Impedance Simulation 
 
 This website provides an interactive simulation designed to explain 
 electrochemical impedance spectroscopy (EIS) by analogy with water flow through pipes.
@@ -15,7 +15,7 @@ this project or any of the code within it, please cite this original work!
 <img src='by.svg' alt='cc-by license logo'>
 
 
-<h2> Electrochemical Impedance Overview </h2>
+## Electrochemical Impedance Overview
 
 Many materials conduct electricity, for instance metals like copper or iron. How well a material
 conducts electricity can be quantified by its resistance, or how well it opposes the flow of charge.
