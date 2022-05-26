@@ -3,7 +3,7 @@
 
 This website provides an interactive simulation designed to explain 
 electrochemical impedance spectroscopy (EIS) by analogy with water flow through pipes.
-The simulation can be accessed <a href='interactive_impedance.html'>here</a>.
+The simulation can be accessed [here](./interactive_impedance.html).
 
 
 This project was developed at the University of Edinburgh to assist with teaching impedance spectroscopy as part of
@@ -12,7 +12,7 @@ It is released as a freely available open educational resource for use in other 
 
 This project is made freely available under a CC-BY license. If you use 
 this project or any of the code within it, please cite this original work!
-![CC-BY logo]('by.svg')
+![CC-BY logo](./by.svg)
 
 
 ## Electrochemical Impedance Background
@@ -73,14 +73,56 @@ our current $I$ must also be sinusoidal.
 **Note, though, that the current doesn't necessarily have to change direction at the same time
 as the voltage!**
 
-This is a tricky idea, but a helpful analogy is to think of momentum. Imagine a spacecraft approaching a 
+This is a tricky concept, but a helpful analogy is to think of momentum. Imagine a spacecraft approaching a 
 distant planet very fast, but aiming to land on the surface. When the 'retro-rockets' start the spacecraft doesn't
 immediately stop; it takes a while after the force starts before the existing momentum is reduced to zero (and ideally, this occurs
 on the surface of the planet!). In this analogy, the spacecraft is the current and the retro-rockets are the voltage; even 
 though the voltage has changed direction, it takes a while for the current to change too.
 
+To express this mathematically, the current $I$ can have a phase offset $\phi$ from the voltage:
+
+$$
+I_t = I_0 \sin (\omega t + \phi)
+$$
+
+![Graph showing sinusoidal voltage and current with a phase offset](./current_voltage.gif)
+
+Combining these different expressions, the overall impedance has both a magnitude $(|Z|)$ and phase $(\phi)$, which need to be considered separately.
+Different plots of frequency, $|Z|$ and $\phi$ can be used to understand different features:
+
+- Bode plot: Plots $|Z|$ and $\phi$ versus frequency $\omega$
+- Nyquist plot: shows $Z$ at each frequency as a point on an Argand diagram, but ignores explicit frequency information
+
+These plots and the underlying $V_t$ and $I_t$ curves are shown in [the simulation](./interactive_impedance.html)
 
 
+### The simulation
+
+In impedance spectroscopy, we commonly model real materials as a combination of resistors and capacitors. The impedance of these is described below:
+
+- Resistors (R): $|Z|$ is independent of frequency, and current changes at the same time as voltage ($\phi=0$)
+- Capacitors (C): Impedance increases with decreasing frequency, such that $|Z| = -\frac{1}{\omega C}$ (where $C$ is the capacitance in Farads). At all frequencies, the current is perfectly out of phase with the voltage ($\phi=+90$).
+
+The exact combination of R and C components in our model can be used to understand the underlying behaviour; resistive contributions means that something is prevent the current from flowing freely, 
+for instance ions can only diffuse slowly or there is only a small part of the sample that can conduct easily. Capacitive components are a sign that charge is being built up; often this is where charge carriers
+are hitting a barrier which causes them to 'back up', but it can also arise from interactions between different atoms in a material.
+
+The simulation aims to express this in analogy with water flow through pipes. A simple resistance is like a constriction in the pipe which slows the flow of water; the higher the resistance, the smaller the hole.
+A capacitor is like a "flexible blockage" (e.g. a rubber plate); water cannot pass through it, but the force of water against it causes it to move, which then pushes water the other side of the blockage.
+The size of the capacitance can be viewed as how 'stretchy' the blockage is, i.e. how easily can it displace without being pulled back towards the middle. 
+A common model used in materials electrochemistry is a 'parallel-RC' circuit, where electrical flow and charge build-up occur at the same time. In this analogy, this is like a rubber blockage with a 
+hole in it!
+
+
+
+### Next steps
+
+Now you understand the basics of impedance, try out [the simulation](./interactive_impedance.html)! Explore how the force applied on one side of the water (purple arrow) affects the resulting movement on
+the other end of the pipe (pink arrow). Play around with the frequency, resistance and capacitance values to see what the effect is.
+
+**Challenge**: using the parallel-RC circuit, see if you can generate a semicircle in the Nyquist plot; this is a common feature in materials electrochemistry!
+
+If you have any comments on this simulation, please get in touch with me at james.cumby@ed.ac.uk.
 
 
 ## Notes
