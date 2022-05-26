@@ -1,3 +1,7 @@
+---
+usemathjax: true
+---
+
 
 ## Simulator to understand impedance spectroscopy
 
