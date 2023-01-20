@@ -89,8 +89,7 @@ $$
 
 Combining these different expressions, the overall impedance has both a magnitude $(|Z|)$ and phase $(\phi)$, which need to be considered separately.
 Different plots of frequency, $|Z|$ and $\phi$ can be used to understand different features:
-
-- Bode plot: Plots $|Z|$ and $\phi$ versus frequency $\omega$
+- Bode plot: Plots $\|Z\|$ and $\phi$ versus frequency $\omega$
 - Nyquist plot: shows $Z$ at each frequency as a point on an Argand diagram, but ignores explicit frequency information
 
 These plots and the underlying $V_t$ and $I_t$ curves are shown in [the simulation](./interactive_impedance.html)
@@ -100,7 +99,7 @@ These plots and the underlying $V_t$ and $I_t$ curves are shown in [the simulati
 
 In impedance spectroscopy, we commonly model real materials as a combination of resistors and capacitors. The impedance of these is described below:
 
-- Resistors (R): $|Z|$ is independent of frequency, and current changes at the same time as voltage ($\phi=0$)
+- Resistors (R): $\|Z\|$ is independent of frequency, and current changes at the same time as voltage ($\phi=0$)
 - Capacitors (C): Impedance increases with decreasing frequency, such that $|Z| = -\frac{1}{\omega C}$ (where $C$ is the capacitance in Farads). At all frequencies, the current is perfectly out of phase with the voltage ($\phi=+90$).
 
 The exact combination of R and C components in our model can be used to understand the underlying behaviour; resistive contributions means that something is prevent the current from flowing freely, 

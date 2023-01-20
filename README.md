@@ -20,5 +20,5 @@ behaviour:
 - Capacitor
 	- $|Z| = \frac{1}{\omega C}$
 	- $\Phi = 90^{\circ}$
-where $\omega is the angular frequency, $\omega = 2\pi f$.
+where $\omega$ is the angular frequency, $\omega = 2\pi f$.
 
