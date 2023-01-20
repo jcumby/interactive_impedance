@@ -65,9 +65,11 @@ I_t = \frac{V_t}{Z(\omega)}
 $$
 
 Because we apply a voltage of the form
+
 $$
 V_t = V_0 \sin(\omega t)
 $$
+
 our current $I$ must also be sinusoidal. 
 
 **Note, though, that the current doesn't necessarily have to change direction at the same time
@@ -107,7 +109,7 @@ for instance ions can only diffuse slowly or there is only a small part of the s
 are hitting a barrier which causes them to 'back up', but it can also arise from interactions between different atoms in a material.
 
 The simulation aims to express this in analogy with water flow through pipes. A simple resistance is like a constriction in the pipe which slows the flow of water; the higher the resistance, the smaller the hole.
-A capacitor is like a "flexible blockage" (e.g. a rubber plate); water cannot pass through it, but the force of water against it causes it to move, which then pushes water the other side of the blockage.
+A capacitor is like a "flexible blockage" (e.g. a rubber diaphragm or a moving plate connected by a spring); water cannot pass through it, but the force of water against it causes it to move, which then pushes water the other side of the blockage.
 The size of the capacitance can be viewed as how 'stretchy' the blockage is, i.e. how easily can it displace without being pulled back towards the middle. 
 A common model used in materials electrochemistry is a 'parallel-RC' circuit, where electrical flow and charge build-up occur at the same time. In this analogy, this is like a rubber blockage with a 
 hole in it!
