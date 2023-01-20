@@ -100,7 +100,7 @@ These plots and the underlying $V_t$ and $I_t$ curves are shown in [the simulati
 In impedance spectroscopy, we commonly model real materials as a combination of resistors and capacitors. The impedance of these is described below:
 
 - Resistors (R): $\|Z\|$ is independent of frequency, and current changes at the same time as voltage ($\phi=0$)
-- Capacitors (C): Impedance increases with decreasing frequency, such that $|Z| = -\frac{1}{\omega C}$ (where $C$ is the capacitance in Farads). At all frequencies, the current is perfectly out of phase with the voltage ($\phi=+90$).
+- Capacitors (C): Impedance increases with decreasing frequency, such that $\|Z\| = -\frac{1}{\omega C}$ (where $C$ is the capacitance in Farads). At all frequencies, the current is perfectly out of phase with the voltage ($\phi=+90$).
 
 The exact combination of R and C components in our model can be used to understand the underlying behaviour; resistive contributions means that something is prevent the current from flowing freely, 
 for instance ions can only diffuse slowly or there is only a small part of the sample that can conduct easily. Capacitive components are a sign that charge is being built up; often this is where charge carriers
